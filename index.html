@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>会計管理システム</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .approved { color: green; font-weight: bold; }
+        .pending { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>発注承認管理画面</h1>
+    <div id="status">読み込み中...</div>
+    <table id="itemTable">
+        <thead>
+            <tr>
+                <th>年度</th>
+                <th>投稿者</th>
+                <th>URL</th>
+                <th>個数</th>
+                <th>状態</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <script>
+        const GAS_URL = "あなたのGASデプロイURL"; // ここを差し替え
+
+        async function loadItems() {
+            const resp = await fetch(`${GAS_URL}?action=get_all`);
+            const data = await resp.json();
+            const body = document.getElementById('tableBody');
+            body.innerHTML = "";
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.year}</td>
+                    <td>${item.user}</td>
+                    <td><a href="${item.url}" target="_blank">リンク</a></td>
+                    <td><input type="number" value="${item.qty}" id="qty-${item.row}" style="width:50px"></td>
+                    <td class="${item.status === '承認済' ? 'approved' : 'pending'}">${item.status}</td>
+                    <td>
+                        <button onclick="updateItem(${item.row}, '承認済')">承認</button>
+                        <button onclick="updateItem(${item.row}, '却下')">却下</button>
+                    </td>
+                `;
+                body.appendChild(row);
+            });
+            document.getElementById('status').innerText = "更新完了";
+        }
+
+        async function updateItem(rowNum, status) {
+            const qty = document.getElementById(`qty-${rowNum}`).value;
+            await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "update",
+                    row: rowNum,
+                    status: status,
+                    qty: parseInt(qty)
+                })
+            });
+            loadItems(); // 再読み込み
+        }
+
+        loadItems();
+    </script>
+</body>
+</html>
