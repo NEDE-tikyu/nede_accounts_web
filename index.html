@@ -10,31 +10,30 @@
         .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
         
-        /* タブスタイル */
         .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
         .tab { padding: 10px 20px; cursor: pointer; border: 1px solid transparent; border-bottom: none; transition: 0.3s; }
         .tab.active { background: #007bff; color: white; border-radius: 5px 5px 0 0; font-weight: bold; }
-        .tab:hover:not(.active) { background: #e9ecef; }
-
-        /* ボタンデザイン */
+        
         .btn-group { margin: 15px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         button { padding: 10px 16px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.3s; }
         .btn-load { background: #007bff; }
         .btn-excel { background: #28a745; }
         .btn-catalog { background: #17a2b8; }
-        .btn-upload { background: #6f42c1; }
+        .btn-upload { background: #6f42c1; font-size: 0.85em; padding: 8px 12px; }
         .btn-save-name { background: #495057; }
         button:hover { opacity: 0.8; }
         
         #status-msg { font-weight: bold; color: #d9534f; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; }
+        .template-status { font-size: 11px; margin-left: 5px; color: #666; }
+        .status-ok { color: #28a745; font-weight: bold; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f8f9fa; }
-        
         .badge { font-size: 10px; padding: 2px 5px; border-radius: 3px; background: #e9ecef; margin-right: 2px; color: #666; border: 1px solid #ccc; white-space: nowrap; }
         .setup-area { background: #eef9ff; border: 2px dashed #007bff; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
-        .bookmark-btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 50px; font-weight: bold; cursor: move; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        input[type="number"] { padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        .bookmark-btn { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 50px; font-weight: bold; cursor: move; }
+        input[type="text"], input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -44,8 +43,6 @@
     <p id="status-msg">ステータス: 準備完了</p>
 
     <div class="setup-area">
-        <strong>【設定】</strong> 下のボタンをブックマークバーにドラッグしてください（型式スキップ対応版）
-        <br><br>
         <a id="bookmarkletLink" href="" class="bookmark-btn">📦 商品データ取得</a>
     </div>
 
@@ -54,18 +51,30 @@
         <div id="tab-after" class="tab" onclick="switchTab('after')">発注済み (履歴)</div>
     </div>
 
-    <div id="accountant-area" class="btn-group" style="background:#f8f9fa; padding:10px; border-radius:5px; border:1px solid #eee;">
+    <div id="accountant-area" class="btn-group" style="background:#f8f9fa; padding:10px; border-radius:5px; border:1px solid #eee; margin-bottom: 10px;">
         <strong>会計担当者:</strong> 
-        <input type="text" id="accountantName" placeholder="氏名を入力" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="text" id="accountantName" placeholder="氏名を入力">
         <button class="btn-save-name" onclick="saveAccountantName()">名前を保存</button>
     </div>
 
+    <div class="btn-group" style="background:#f1f3f5; padding:15px; border-radius:8px;">
+        <div style="width:100%; margin-bottom:10px;"><strong>📁 テンプレート設定</strong></div>
+        <div>
+            <button class="btn-upload" onclick="document.getElementById('inputReq').click()">① 発注表テンプレ更新</button>
+            <input type="file" id="inputReq" style="display:none" accept=".xlsx" onchange="handleTemplateUpload(this, 'excel_template')">
+            <span id="stReq" class="template-status">未設定</span>
+        </div>
+        <div>
+            <button class="btn-upload" onclick="document.getElementById('inputCat').click()">② カタログテンプレ更新</button>
+            <input type="file" id="inputCat" style="display:none" accept=".xlsx" onchange="handleTemplateUpload(this, 'catalog_template')">
+            <span id="stCat" class="template-status">未設定</span>
+        </div>
+    </div>
+
     <div class="btn-group">
-        <button class="btn-load" onclick="loadItems()">① データ更新</button>
-        <button class="btn-excel" onclick="exportFromTemplate()">② 発注依頼表 (Excel)</button>
-        <button class="btn-catalog" onclick="exportCatalog()">③ カタログ (Excel)</button>
-        <input type="file" id="templateInput" style="display:none" accept=".xlsx" onchange="handleTemplateUpload(this, 'excel_template')">
-        <button class="btn-upload" onclick="document.getElementById('templateInput').click()">テンプレ更新</button>
+        <button class="btn-load" onclick="loadItems()">データ更新</button>
+        <button class="btn-excel" onclick="exportFromTemplate()">発注依頼表 (Excel) 出力</button>
+        <button class="btn-catalog" onclick="exportCatalog()">カタログ (Excel) 出力</button>
     </div>
 
     <table id="itemTable">
@@ -75,27 +84,40 @@
 </div>
 
 <script>
-    // ★GASのWebアプリURLを確認してください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx1kT6wwSODjEZaE0zxJur82zFcD1_cdH8V0vY8jXY7qVRxfhtHSj6GtwgyOCl6dQ5oHQ/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzjXuIzxkZlxj6joJ-_sTWKHhVGnnhbNAOsfGpvV0DzroaQ5XpnOR7M41Sm54Q3N5v2/exec"; 
     
     let allData = [];
     let currentTab = 'before';
     let cachedRequestTemplate = null;
     let cachedCatalogTemplate = null;
 
-    // ブックマークレット生成（型式スキップ対応ロジック内蔵）
+    // ブックマークレット生成（型式スキップ対応版）
     const bml = `javascript:(function(){const gasUrl='${GAS_URL}';const fields=['品名','型式','単価','メーカー'];let results={};let currentStep=0;let lastText='';const panel=document.createElement('div');panel.style='position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:2147483647;background:#222;color:#00ffcc;padding:20px;border-radius:12px;font-family:sans-serif;box-shadow:0 10px 40px rgba(0,0,0,0.8);border:2px solid #00ffcc;text-align:center;min-width:300px;';document.body.appendChild(panel);const update=()=>{const skipMsg=fields[currentStep]==='型式'?'<br><span style="color:#ffcc00;font-size:11px;">※無い場合はそのままEnterでスキップ</span>':'';panel.innerHTML=\`<div style='font-size:12px;color:#888;'>STEP \${currentStep+1}/\${fields.length}</div><div style='font-size:20px;margin:10px 0;font-weight:bold;'>「\${fields[currentStep]}」を選択してEnter</div>\${skipMsg}<div style='font-size:12px;color:#aaa;margin-top:10px;'>クリックまたは範囲選択して確定</div>\`};const style=document.createElement('style');style.innerHTML='.gas-target{outline:2px solid #00ffcc !important;background:rgba(0,255,204,0.1) !important;}';document.head.appendChild(style);const onOver=(e)=>e.target.classList.add('gas-target');const onOut=(e)=>e.target.classList.remove('gas-target');const onClick=(e)=>{e.preventDefault();e.stopPropagation();lastText=e.target.innerText.trim()};document.addEventListener('mouseover',onOver);document.addEventListener('mouseout',onOut);document.addEventListener('click',onClick);const onKey=(e)=>{if(e.key==='Enter'){const sel=window.getSelection().toString().trim();const val=sel||lastText;results[fields[currentStep]]=val||'';currentStep++;if(currentStep<fields.length){lastText='';update()}else{finish()}}};window.addEventListener('keydown',onKey);function finish(){panel.innerHTML='送信中...';fetch(gasUrl,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'update_from_browser',url:window.location.href,data:results})}).then(()=>{panel.style.background='#006633';panel.innerHTML='反映完了！';setTimeout(()=>panel.remove(),2000)})};update()})();`;
     document.getElementById('bookmarkletLink').href = bml;
 
     window.onload = () => {
+        // 会計担当者名復元
         const savedName = localStorage.getItem('accountant_name');
         if (savedName) document.getElementById('accountantName').value = savedName;
+
+        // テンプレート復元
         const savedReq = localStorage.getItem('excel_template');
-        if (savedReq) cachedRequestTemplate = base64ToArrayBuffer(savedReq);
+        if (savedReq) {
+            cachedRequestTemplate = base64ToArrayBuffer(savedReq);
+            document.getElementById('stReq').innerHTML = '<span class="status-ok">✔ 保存済</span>';
+        }
         const savedCat = localStorage.getItem('catalog_template');
-        if (savedCat) cachedCatalogTemplate = base64ToArrayBuffer(savedCat);
+        if (savedCat) {
+            cachedCatalogTemplate = base64ToArrayBuffer(savedCat);
+            document.getElementById('stCat').innerHTML = '<span class="status-ok">✔ 保存済</span>';
+        }
         loadItems();
     };
+
+    function saveAccountantName() {
+        localStorage.setItem('accountant_name', document.getElementById('accountantName').value);
+        alert("担当者名を保存しました");
+    }
 
     function switchTab(tab) {
         currentTab = tab;
@@ -111,37 +133,32 @@
             allData = await resp.json();
             renderTable();
             document.getElementById('status-msg').innerText = "読込完了";
-        } catch (e) { 
-            document.getElementById('status-msg').innerText = "読込エラー (URLFetch権限かGASの公開設定を確認してください)"; 
-        }
+        } catch (e) { document.getElementById('status-msg').innerText = "読込エラー"; }
     }
 
     function renderTable() {
         const head = document.getElementById('tableHead');
         const body = document.getElementById('tableBody');
         body.innerHTML = "";
-
+        
         if (currentTab === 'before') {
             head.innerHTML = "<th>投稿者</th><th>商品情報</th><th>個数</th><th>状態</th><th>操作</th>";
-            // 3条件（承認済・依頼表済・カタログ済）が全て揃っていないものを抽出
+            // 3つのステータスが揃っていないものを表示
             const filtered = allData.filter(i => !(i.status.includes("承認済") && i.status.includes("発注依頼表作成済み") && i.status.includes("カタログ作成済み")));
             filtered.reverse().forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${item.user}</td>
-                    <td><b>${item.itemName || '-'}</b><br><span style="font-size:11px; color:#666;">${item.model || '(型式なし)'} / ¥${item.price} [${item.maker}]</span><br><a href="${item.url}" target="_blank" style="font-size:11px;">URL</a></td>
+                    <td><b>${item.itemName || '-'}</b><br><small>${item.model || '(型式なし)'} / ¥${item.price}</small></td>
                     <td><input type="number" id="qty-${item.row}" value="${item.qty}" style="width:45px"></td>
                     <td>${item.status.split(',').map(s=>`<span class="badge">${s}</span>`).join('')}</td>
-                    <td>
-                        <button style="background:#007bff; padding:5px 10px;" onclick="window.open('${item.url}')">開く</button>
-                        <button style="background:#28a745; padding:5px 10px;" onclick="updateStatus(${item.row}, '承認済')">承認</button>
-                    </td>
+                    <td><button style="background:#28a745; padding:5px 10px;" onclick="updateStatus(${item.row}, '承認済')">承認</button></td>
                 `;
                 body.appendChild(tr);
             });
         } else {
             head.innerHTML = "<th>品名</th><th>型式</th><th>単価</th><th>個数</th><th>操作</th>";
-            // 3条件が全て揃っているものを抽出
+            // 3つのステータスが揃っているものを表示
             const filtered = allData.filter(i => i.status.includes("承認済") && i.status.includes("発注依頼表作成済み") && i.status.includes("カタログ作成済み"));
             filtered.reverse().forEach(item => {
                 const tr = document.createElement('tr');
@@ -159,7 +176,6 @@
 
     async function updateStatus(row, status) {
         const qty = document.getElementById(`qty-${row}`).value;
-        document.getElementById('status-msg').innerText = "更新中...";
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "update_status", row: row, status: status, qty: qty }) });
         loadItems();
     }
@@ -167,37 +183,41 @@
     async function reorder(row) {
         const item = allData.find(i => i.row === row);
         const qty = document.getElementById(`rqty-${row}`).value;
-        document.getElementById('status-msg').innerText = "再発注処理中...";
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ 
-            action: "reorder", user: "再発注", url: item.url, qty: qty, 
-            itemName: item.itemName, model: item.model, price: item.price, maker: item.maker 
-        }) });
-        alert("発注前タブに新規追加しました");
+        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "reorder", user: "再発注", url: item.url, qty: qty, itemName: item.itemName, model: item.model, price: item.price, maker: item.maker }) });
+        alert("発注前に新規追加しました");
         loadItems();
     }
 
+    async function handleTemplateUpload(input, key) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const buffer = e.target.result;
+            if(key==='excel_template') cachedRequestTemplate = buffer; else cachedCatalogTemplate = buffer;
+            localStorage.setItem(key, arrayBufferToBase64(buffer));
+            document.getElementById(key === 'excel_template' ? 'stReq' : 'stCat').innerHTML = '<span class="status-ok">✔ 保存済</span>';
+            alert("テンプレートを更新しました");
+        };
+        reader.readAsArrayBuffer(input.files[0]);
+    }
+
     async function exportFromTemplate() {
-        if (!cachedRequestTemplate) return alert("発注表のテンプレートをアップロードしてください");
-        const accountant = document.getElementById('accountantName').value || "未設定";
+        if (!cachedRequestTemplate) return alert("発注表のテンプレをアップロードしてください");
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(cachedRequestTemplate);
         const sheet = workbook.getWorksheet('エネルギー研');
-        if(!sheet) return alert("シート名「エネルギー研」が見つかりません");
+        if(!sheet) return alert("「エネルギー研」というシートが見つかりません");
 
-        // A13:A22, C13:G22 をクリア
+        // 要件：毎回作成前にA13～A22およびC13～G22を削除
         for(let r=13; r<=22; r++) {
-            sheet.getRow(r).getCell(1).value = null; 
-            for(let c=3; c<=7; c++) sheet.getRow(r).getCell(c).value = null; 
+            sheet.getRow(r).getCell(1).value = null; // A
+            for(let c=3; c<=7; c++) sheet.getRow(r).getCell(c).value = null; // C-G
         }
 
         const approved = allData.filter(i => i.status.includes("承認済"));
         const updates = [];
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
-
         approved.slice(0, 10).forEach((item, i) => {
             const r = 13 + i;
-            sheet.getCell(`A${r}`).value = dateStr;
+            sheet.getCell(`A${r}`).value = new Date().toLocaleDateString();
             sheet.getCell(`C${r}`).value = item.itemName;
             sheet.getCell(`D${r}`).value = item.model;
             sheet.getCell(`E${r}`).value = Number(item.price);
@@ -209,22 +229,21 @@
             updates.push({ row: item.row, status: s });
         });
 
-        document.getElementById('status-msg').innerText = "ステータス更新中...";
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "update_status_multi", updates: updates }) });
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `発注依頼表_${dateStr}.xlsx`);
+        saveAs(new Blob([buffer]), `発注依頼表_${new Date().toLocaleDateString()}.xlsx`);
         loadItems();
     }
 
     async function exportCatalog() {
-        if (!cachedCatalogTemplate) return alert("カタログのテンプレートをアップロードしてください");
+        if (!cachedCatalogTemplate) return alert("カタログのテンプレをアップロードしてください");
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(cachedCatalogTemplate);
         const sheet = workbook.getWorksheet(1);
 
-        // C3:H16 をクリア
+        // 要件：毎回作成前にC3～H16セルの値のみ削除
         for(let r=3; r<=16; r++) {
-            for(let c=3; c<=8; c++) sheet.getRow(r).getCell(c).value = null;
+            for(let c=3; c<=8; c++) sheet.getRow(r).getCell(c).value = null; // C-H
         }
 
         const approved = allData.filter(i => i.status.includes("承認済"));
@@ -243,28 +262,12 @@
             updates.push({ row: item.row, status: s });
         });
 
-        document.getElementById('status-msg').innerText = "ステータス更新中...";
         await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "update_status_multi", updates: updates }) });
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), `カタログ_${new Date().toLocaleDateString()}.xlsx`);
         loadItems();
     }
 
-    // 補助関数
-    function saveAccountantName() {
-        localStorage.setItem('accountant_name', document.getElementById('accountantName').value);
-        alert("担当者名をブラウザに保存しました");
-    }
-    function handleTemplateUpload(input, key) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const buffer = e.target.result;
-            if(key==='excel_template') cachedRequestTemplate = buffer; else cachedCatalogTemplate = buffer;
-            localStorage.setItem(key, arrayBufferToBase64(buffer));
-            alert("テンプレートを保存しました");
-        };
-        reader.readAsArrayBuffer(input.files[0]);
-    }
     function arrayBufferToBase64(b){let s='';const y=new Uint8Array(b);for(let i=0;i<y.byteLength;i++)s+=String.fromCharCode(y[i]);return window.btoa(s);}
     function base64ToArrayBuffer(s){const b=window.atob(s);const l=b.length;const y=new Uint8Array(l);for(let i=0;i<l;i++)y[i]=b.charCodeAt(i);return y.buffer;}
 </script>
