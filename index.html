@@ -22,7 +22,6 @@
         .btn-upload { background: #6f42c1; font-size: 0.85em; padding: 8px 12px; }
         .btn-save-name { background: #495057; }
         
-        /* 操作用スモールボタン */
         .btn-sm { padding: 4px 8px; font-size: 0.8em; }
         .btn-open { background: #17a2b8; }
         .btn-approve { background: #28a745; }
@@ -95,15 +94,15 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzXxv3sTnPR_op5E3PJEHS-c9DbemTg8ihKHm-j8lZwdnHpc33X_K25qSidwXPbGkvdIQ/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwQSUME_UlBmI4E5MrV6b0wAkFYr0angHCVlhjWa-f1xkA54u8gB518cNeqzk7YncAcgg/exec"; 
     
     let allData = [];
     let currentTab = 'before';
     let cachedRequestTemplate = null;
     let cachedCatalogTemplate = null;
 
-    // ブックマークレット（型式スキップ・確定動作改善版）
-    const bml = `javascript:(function(){const gasUrl='${GAS_URL}';const fields=['品名','型式','単価','メーカー'];let results={};let currentStep=0;let lastText='';const panel=document.createElement('div');panel.style='position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:2147483647;background:#222;color:#00ffcc;padding:20px;border-radius:12px;font-family:sans-serif;box-shadow:0 10px 40px rgba(0,0,0,0.8);border:2px solid #00ffcc;text-align:center;min-width:300px;';document.body.appendChild(panel);const update=()=>{const skipMsg=fields[currentStep]==='型式'?'<br><span style="color:#ffcc00;font-size:11px;">※無い場合はそのままEnterでスキップ</span>':'';panel.innerHTML=\`<div style='font-size:12px;color:#888;'>STEP \${currentStep+1}/\${fields.length}</div><div style='font-size:20px;margin:10px 0;font-weight:bold;'>「\${fields[currentStep]}」を選択してEnter</div>\${skipMsg}<div style='font-size:12px;color:#aaa;margin-top:10px;'>クリックまたは範囲選択して確定</div>\`};const style=document.createElement('style');style.innerHTML='.gas-target{outline:2px solid #00ffcc !important;background:rgba(0,255,204,0.1) !important;}';document.head.appendChild(style);const onOver=(e)=>e.target.classList.add('gas-target');const onOut=(e)=>e.target.classList.remove('gas-target');const onClick=(e)=>{e.preventDefault();e.stopPropagation();lastText=e.target.innerText.trim()};document.addEventListener('mouseover',onOver);document.addEventListener('mouseout',onOut);document.addEventListener('click',onClick);const onKey=(e)=>{if(e.key==='Enter'){const sel=window.getSelection().toString().trim();const val=sel||lastText;results[fields[currentStep]]=val||'';currentStep++;if(currentStep<fields.length){lastText='';update()}else{finish()}}};window.addEventListener('keydown',onKey);function finish(){panel.innerHTML='送信中...';fetch(gasUrl,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'update_from_browser',url:window.location.href,data:results})}).then(()=>{panel.style.background='#006633';panel.innerHTML='反映完了！';setTimeout(()=>panel.remove(),2000)})};update()})();`;
+    // ブックマークレット（Escキー中断・型式スキップ対応版）
+    const bml = `javascript:(function(){const gasUrl='${GAS_URL}';const fields=['品名','型式','単価','メーカー'];let results={};let currentStep=0;let lastText='';const panel=document.createElement('div');panel.style='position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:2147483647;background:#222;color:#00ffcc;padding:20px;border-radius:12px;font-family:sans-serif;box-shadow:0 10px 40px rgba(0,0,0,0.8);border:2px solid #00ffcc;text-align:center;min-width:300px;';document.body.appendChild(panel);const update=()=>{const skipMsg=fields[currentStep]==='型式'?'<br><span style="color:#ffcc00;font-size:11px;">※無い場合はそのままEnterでスキップ</span>':'';panel.innerHTML=\`<div style='font-size:12px;color:#888;'>STEP \${currentStep+1}/\${fields.length}</div><div style='font-size:20px;margin:10px 0;font-weight:bold;'>「\${fields[currentStep]}」を選択してEnter</div>\${skipMsg}<div style='font-size:12px;color:#aaa;margin-top:10px;'>Escキーで中断</div>\`};const style=document.createElement('style');style.innerHTML='.gas-target{outline:2px solid #00ffcc !important;background:rgba(0,255,204,0.1) !important;}';document.head.appendChild(style);const onOver=(e)=>e.target.classList.add('gas-target');const onOut=(e)=>e.target.classList.remove('gas-target');const onClick=(e)=>{e.preventDefault();e.stopPropagation();lastText=e.target.innerText.trim()};document.addEventListener('mouseover',onOver);document.addEventListener('mouseout',onOut);document.addEventListener('click',onClick);const cleanup=()=>{document.removeEventListener('mouseover',onOver);document.removeEventListener('mouseout',onOut);document.removeEventListener('click',onClick);window.removeEventListener('keydown',onKey);panel.remove()};const onKey=(e)=>{if(e.key==='Escape'){cleanup();return}if(e.key==='Enter'){const sel=window.getSelection().toString().trim();const val=sel||lastText;results[fields[currentStep]]=val||'';currentStep++;if(currentStep<fields.length){lastText='';update()}else{finish()}}};window.addEventListener('keydown',onKey);function finish(){panel.innerHTML='送信中...';fetch(gasUrl,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'update_from_browser',url:window.location.href,data:results})}).then(()=>{panel.style.background='#006633';panel.innerHTML='反映完了！';setTimeout(cleanup,2000)})};update()})();`;
     document.getElementById('bookmarkletLink').href = bml;
 
     window.onload = () => {
