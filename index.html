@@ -1,76 +1,145 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-    <title>会計管理システム</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>エネルギー研究会 発注承認システム</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f7f6; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         .approved { color: green; font-weight: bold; }
-        .pending { color: orange; }
+        .btn-group { margin: 20px 0; display: flex; gap: 10px; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; }
+        .btn-load { background: #007bff; }
+        .btn-excel { background: #28a745; }
+        .btn-pdf { background: #dc3545; }
     </style>
 </head>
 <body>
+
+<div class="container">
     <h1>発注承認管理画面</h1>
-    <div id="status">読み込み中...</div>
+    <p id="status">ステータス: 準備完了</p>
+
+    <div class="btn-group">
+        <button class="btn-load" onclick="loadItems()">データ読み込み</button>
+        <button class="btn-excel" onclick="exportFromTemplate()">Excel出力 (エネルギー研シート編集)</button>
+        <button class="btn-pdf" onclick="exportToPDF()">PDF出力 (カタログ)</button>
+    </div>
+
     <table id="itemTable">
         <thead>
             <tr>
-                <th>年度</th>
-                <th>投稿者</th>
-                <th>URL</th>
-                <th>個数</th>
-                <th>状態</th>
-                <th>操作</th>
+                <th>年度</th><th>投稿者</th><th>URL</th><th>個数</th><th>状態</th><th>操作</th>
             </tr>
         </thead>
         <tbody id="tableBody"></tbody>
     </table>
+</div>
 
-    <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyGd4kM2yzVwdcaQASaIdAzyle3Ekbc6cjtr9OgQlBBNquVVOGjAJxC0BsAhw7EPQt00g/exec"; // ここを差し替え
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyGd4kM2yzVwdcaQASaIdAzyle3Ekbc6cjtr9OgQlBBNquVVOGjAJxC0BsAhw7EPQt00g/exec"; 
+    let allData = [];
 
-        async function loadItems() {
+    async function loadItems() {
+        document.getElementById('status').innerText = "読み込み中...";
+        try {
             const resp = await fetch(`${GAS_URL}?action=get_all`);
-            const data = await resp.json();
+            allData = await resp.json();
             const body = document.getElementById('tableBody');
             body.innerHTML = "";
-
-            data.forEach(item => {
+            allData.forEach(item => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${item.year}</td>
-                    <td>${item.user}</td>
+                    <td>${item.year || ''}</td><td>${item.user || ''}</td>
                     <td><a href="${item.url}" target="_blank">リンク</a></td>
-                    <td><input type="number" value="${item.qty}" id="qty-${item.row}" style="width:50px"></td>
-                    <td class="${item.status === '承認済' ? 'approved' : 'pending'}">${item.status}</td>
+                    <td><input type="number" value="${item.qty || 1}" id="qty-${item.row}" style="width:50px"></td>
+                    <td class="${item.status === '承認済' ? 'approved' : ''}">${item.status || '未承認'}</td>
                     <td>
-                        <button onclick="updateItem(${item.row}, '承認済')">承認</button>
-                        <button onclick="updateItem(${item.row}, '却下')">却下</button>
+                        <button style="background:#28a745" onclick="updateItem(${item.row}, '承認済')">承認</button>
+                        <button style="background:#6c757d" onclick="updateItem(${item.row}, '却下')">却下</button>
                     </td>
                 `;
                 body.appendChild(row);
             });
-            document.getElementById('status').innerText = "更新完了";
-        }
+            document.getElementById('status').innerText = "データ更新完了";
+        } catch (e) { document.getElementById('status').innerText = "エラー: " + e; }
+    }
 
-        async function updateItem(rowNum, status) {
-            const qty = document.getElementById(`qty-${rowNum}`).value;
+    async function updateItem(row, status) {
+        const qty = document.getElementById(`qty-${row}`).value;
+        try {
             await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({
-                    action: "update",
-                    row: rowNum,
-                    status: status,
-                    qty: parseInt(qty)
-                })
+                body: JSON.stringify({ action: "update", row: row, status: status, qty: qty })
             });
-            loadItems(); // 再読み込み
-        }
+            loadItems();
+        } catch (e) { alert("更新失敗"); }
+    }
 
-        loadItems();
-    </script>
+    async function exportFromTemplate() {
+        const previousTotal = prompt("これまでの支出金額合計を入力してください", "272715");
+        if (previousTotal === null) return;
+
+        try {
+            document.getElementById('status').innerText = "テンプレート読み込み中...";
+            const response = await fetch('template.xlsx');
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+
+            // 修正：特定のシート「エネルギー研」のみを取得（他のシートは保持される）
+            const sheet = workbook.getWorksheet('エネルギー研');
+            if (!sheet) {
+                alert("テンプレート内に 'エネルギー研' という名前のシートが見つかりません。");
+                return;
+            }
+
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
+            
+            // 指定セルへの流し込み
+            sheet.getCell('F2').value = todayStr; 
+            sheet.getCell('F3').value = "会計担当　三宅啓斗";
+            sheet.getCell('B8').value = Number(previousTotal);
+
+            const approvedItems = allData.filter(item => item.status === '承認済');
+            approvedItems.forEach((item, index) => {
+                const r = 13 + index;
+                if(r <= 22) { // 22行目までの枠に書き込み
+                    sheet.getCell(`A${r}`).value = todayStr;
+                    sheet.getCell(`C${r}`).value = "詳細はカタログURL参照"; 
+                    sheet.getCell(`F${r}`).value = Number(item.qty);
+                }
+            });
+
+            // ファイル名の作成：エネルギー研究会_発注依頼表_年度_月_日付
+            const fileName = `エネルギー研究会_発注依頼表_${now.getFullYear()}_${now.getMonth() + 1}_${now.getDate()}.xlsx`;
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer]), fileName);
+            document.getElementById('status').innerText = "Excel出力完了";
+
+        } catch (e) {
+            console.error(e);
+            alert("エラーが発生しました。template.xlsxが正しいか確認してください。");
+        }
+    }
+
+    function exportToPDF() {
+        const approvedItems = allData.filter(item => item.status === '承認済');
+        const element = document.createElement('div');
+        element.style.padding = "20px";
+        element.innerHTML = `<h2>カタログURLリスト</h2><table border="1" style="width:100%">
+            ${approvedItems.map(item => `<tr><td>${item.user}</td><td>${item.url}</td><td>${item.qty}個</td></tr>`).join('')}
+        </table>`;
+        html2pdf().set({ margin: 10, filename: 'カタログ.pdf' }).from(element).save();
+    }
+</script>
 </body>
 </html>
