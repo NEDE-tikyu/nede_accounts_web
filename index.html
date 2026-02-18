@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>エネルギー研究会 発注承認システム</title>
+    <title>エネルギー研究会 発注管理システム</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f7f6; }
         .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -19,61 +18,65 @@
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; }
         .btn-load { background: #007bff; }
         .btn-excel { background: #28a745; }
-        .btn-pdf { background: #dc3545; }
+        .btn-catalog { background: #17a2b8; }
         .btn-upload { background: #6f42c1; }
+        .btn-upload-cat { background: #e83e8c; }
         #status { font-weight: bold; color: #555; padding: 10px; background: #eee; border-radius: 4px; }
         input[type="number"] { width: 50px; padding: 5px; }
+        .section-title { margin-top: 20px; font-size: 0.9em; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>エネルギー研究会 発注管理画面</h1>
-    <p id="status">ステータス: 準備完了。テンプレートをアップロードしてください。</p>
+    <p id="status">ステータス: 準備完了</p>
 
+    <div class="section-title">▼ 1. データ操作</div>
     <div class="btn-group">
-        <button class="btn-load" onclick="loadItems()">① データ読み込み</button>
-        
-        <input type="file" id="templateInput" style="display:none" accept=".xlsx" onchange="handleTemplateUpload(this)">
-        <button class="btn-upload" onclick="document.getElementById('templateInput').click()">② テンプレート更新</button>
-        
-        <button class="btn-excel" onclick="exportFromTemplate()">③ Excel出力 (エネルギー研)</button>
-        <button class="btn-pdf" onclick="exportToPDF()">④ PDF出力 (カタログ)</button>
+        <button class="btn-load" onclick="loadItems()">データ読み込み</button>
+    </div>
+
+    <div class="section-title">▼ 2. テンプレート設定（初回のみ）</div>
+    <div class="btn-group">
+        <input type="file" id="templateInput" style="display:none" accept=".xlsx" onchange="handleTemplateUpload(this, 'excel_template')">
+        <button class="btn-upload" onclick="document.getElementById('templateInput').click()">発注依頼表テンプレ更新</button>
+
+        <input type="file" id="catalogInput" style="display:none" accept=".xlsx" onchange="handleTemplateUpload(this, 'catalog_template')">
+        <button class="btn-upload-cat" onclick="document.getElementById('catalogInput').click()">カタログ用テンプレ更新</button>
+    </div>
+
+    <div class="section-title">▼ 3. 書類出力</div>
+    <div class="btn-group">
+        <button class="btn-excel" onclick="exportFromTemplate()">Excel出力 (発注依頼表)</button>
+        <button class="btn-catalog" onclick="exportCatalog()">Excel出力 (カタログ)</button>
     </div>
 
     <table id="itemTable">
         <thead>
             <tr>
-                <th>年度</th>
-                <th>投稿者</th>
-                <th>URL</th>
-                <th>個数</th>
-                <th>状態</th>
-                <th>操作</th>
+                <th>年度</th><th>投稿者</th><th>URL</th><th>個数</th><th>状態</th><th>操作</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            </tbody>
+        <tbody id="tableBody"></tbody>
     </table>
 </div>
 
 <script>
-    // --- 設定：あなたのGAS URLをここに貼り付けてください ---
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyRYNgvBWNmA5KjlXhcPFaP1vzWOO1O5ErfJE8Sptqg39RelF7tjxlnEfNcy16s1nCRaw/exec"; 
-    
+    const GAS_URL = "あなたのGASデプロイURL"; 
     let allData = [];
-    let cachedTemplate = null;
+    let cachedRequestTemplate = null;
+    let cachedCatalogTemplate = null;
 
-    // ページ読み込み時にブラウザ保存されたテンプレを復元
     window.onload = () => {
-        const saved = localStorage.getItem('excel_template');
-        if (saved) {
-            cachedTemplate = base64ToArrayBuffer(saved);
-            document.getElementById('status').innerText = "保存済みテンプレートを読み込みました。";
-        }
+        const savedReq = localStorage.getItem('excel_template');
+        if (savedReq) cachedRequestTemplate = base64ToArrayBuffer(savedReq);
+        const savedCat = localStorage.getItem('catalog_template');
+        if (savedCat) cachedCatalogTemplate = base64ToArrayBuffer(savedCat);
+        
+        if(savedReq && savedCat) document.getElementById('status').innerText = "全テンプレート読込済。";
     };
 
-    // 1. スプレッドシートからデータ取得
     async function loadItems() {
         document.getElementById('status').innerText = "読み込み中...";
         try {
@@ -81,16 +84,13 @@
             allData = await resp.json();
             const body = document.getElementById('tableBody');
             body.innerHTML = "";
-
             allData.forEach(item => {
                 const isApproved = (item.status === '承認済');
                 const row = document.createElement('tr');
                 if(isApproved) row.className = "approved";
-                
                 row.innerHTML = `
-                    <td>${item.year || ''}</td>
-                    <td>${item.user || ''}</td>
-                    <td><a href="${item.url}" target="_blank">商品リンク</a></td>
+                    <td>${item.year || ''}</td><td>${item.user || ''}</td>
+                    <td><a href="${item.url}" target="_blank">リンク</a></td>
                     <td><input type="number" value="${item.qty || 1}" id="qty-${item.row}"></td>
                     <td>${item.status || '未承認'}</td>
                     <td>
@@ -100,125 +100,88 @@
                 `;
                 body.appendChild(row);
             });
-            document.getElementById('status').innerText = "データの読み込みが完了しました。";
-        } catch (e) {
-            document.getElementById('status').innerText = "エラー: " + e;
-        }
+            document.getElementById('status').innerText = "読込完了";
+        } catch (e) { document.getElementById('status').innerText = "エラー: " + e; }
     }
 
-    // 2. 状態更新（承認/却下）
     async function updateItem(row, status) {
         const qty = document.getElementById(`qty-${row}`).value;
-        document.getElementById('status').innerText = "送信中...";
         try {
-            await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "update", row: row, status: status, qty: qty })
-            });
-            loadItems(); // 一覧を再読込
-        } catch (e) {
-            alert("更新に失敗しました。");
-        }
+            await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "update", row: row, status: status, qty: qty }) });
+            loadItems();
+        } catch (e) { alert("更新失敗"); }
     }
 
-    // 3. テンプレートのアップロードと保存
-    function handleTemplateUpload(input) {
+    function handleTemplateUpload(input, storageKey) {
         const file = input.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
-            cachedTemplate = e.target.result;
-            // ブラウザのLocalStorageに保存（Base64形式）
-            localStorage.setItem('excel_template', arrayBufferToBase64(cachedTemplate));
-            document.getElementById('status').innerText = "テンプレートを更新し、ブラウザに保存しました。";
-            alert("テンプレートの更新完了！");
+            const buffer = e.target.result;
+            if(storageKey === 'excel_template') cachedRequestTemplate = buffer;
+            else cachedCatalogTemplate = buffer;
+            localStorage.setItem(storageKey, arrayBufferToBase64(buffer));
+            alert("テンプレートを保存しました。");
         };
         reader.readAsArrayBuffer(file);
     }
 
-    // 4. Excel出力 (テンプレートの他シートを保持したまま「エネルギー研」を編集)
-    async function exportFromTemplate() {
-        if (!cachedTemplate) {
-            alert("先に「テンプレート更新」ボタンからファイルを読み込ませてください。");
-            return;
-        }
-
-        const previousTotal = prompt("これまでの支出金額合計を入力してください", "272715");
-        if (previousTotal === null) return;
-
+    // --- カタログ出力機能 ---
+    async function exportCatalog() {
+        if (!cachedCatalogTemplate) { alert("カタログ用テンプレートを先に更新してください。"); return; }
         try {
-            document.getElementById('status').innerText = "Excel生成中...";
             const workbook = new ExcelJS.Workbook();
-            await workbook.xlsx.load(cachedTemplate);
+            await workbook.xlsx.load(cachedCatalogTemplate);
+            const sheet = workbook.getWorksheet(1); // 1番目のシート
 
-            // 他のシートを保持したまま「エネルギー研」シートのみ取得
-            const sheet = workbook.getWorksheet('エネルギー研');
-            if (!sheet) {
-                alert("シート「エネルギー研」が見つかりません。");
-                return;
-            }
-
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1;
-            const date = now.getDate();
-            const dateStr = `${year}/${month}/${date}`;
-
-            // 指定されたセルに書き込み
-            sheet.getCell('F2').value = dateStr;
-            sheet.getCell('F3').value = "会計担当　三宅啓斗";
-            sheet.getCell('B8').value = Number(previousTotal);
-
-            // 承認済みデータを13行目から反映
             const approvedItems = allData.filter(item => item.status === '承認済');
             approvedItems.forEach((item, index) => {
-                const r = 13 + index;
-                if (r <= 22) { // 枠内のみ
-                    sheet.getCell(`A${r}`).value = dateStr;
-                    sheet.getCell(`C${r}`).value = "詳細はカタログURL参照";
+                const r = 3 + index; // 3行目から開始
+                if (r <= 16) {
+                    sheet.getCell(`C${r}`).value = "商品詳細はURL参照"; // 品名 (スプレッドシートに項目があれば item.name)
                     sheet.getCell(`F${r}`).value = Number(item.qty);
+                    sheet.getCell(`H${r}`).value = item.url;
                 }
             });
 
-            // ファイル名：エネルギー研究会_発注依頼表_年度_月_日付
-            const fileName = `エネルギー研究会_発注依頼表_${year}_${month}_${date}.xlsx`;
-
+            const now = new Date();
+            const fileName = `エネルギー研究会_カタログURL_${now.getFullYear()}_${now.getMonth()+1}_${now.getDate()}.xlsx`;
             const buffer = await workbook.xlsx.writeBuffer();
             saveAs(new Blob([buffer]), fileName);
-            document.getElementById('status').innerText = "Excelファイルを出力しました。";
-        } catch (e) {
-            console.error(e);
-            alert("Excel出力中にエラーが発生しました。");
-        }
+        } catch (e) { alert("出力エラー"); }
     }
 
-    // 5. PDF出力 (カタログ形式)
-    function exportToPDF() {
-        const approvedItems = allData.filter(item => item.status === '承認済');
-        const element = document.createElement('div');
-        element.style.padding = "20px";
-        element.innerHTML = `
-            <h1 style="text-align:center">カタログURLリスト (エネルギー研究会)</h1>
-            <p style="text-align:right">作成日: ${new Date().toLocaleDateString()}</p>
-            <table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#eee"><th>投稿者</th><th>商品URL</th><th>個数</th></tr>
-                ${approvedItems.map(item => `
-                    <tr>
-                        <td style="padding:8px">${item.user}</td>
-                        <td style="padding:8px; word-break:break-all">${item.url}</td>
-                        <td style="padding:8px">${item.qty}</td>
-                    </tr>
-                `).join('')}
-            </table>
-        `;
-        html2pdf().set({ margin: 10, filename: 'カタログURLリスト.pdf' }).from(element).save();
+    // --- 発注依頼表出力機能（前回分） ---
+    async function exportFromTemplate() {
+        if (!cachedRequestTemplate) { alert("発注依頼表テンプレートを先に更新してください。"); return; }
+        const previousTotal = prompt("支出金額合計を入力", "0");
+        if (previousTotal === null) return;
+        try {
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(cachedRequestTemplate);
+            const sheet = workbook.getWorksheet('エネルギー研');
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
+            sheet.getCell('F2').value = dateStr;
+            sheet.getCell('F3').value = "会計担当　三宅啓斗";
+            sheet.getCell('B8').value = Number(previousTotal);
+            const approvedItems = allData.filter(item => item.status === '承認済');
+            approvedItems.forEach((item, index) => {
+                const r = 13 + index;
+                if (r <= 22) {
+                    sheet.getCell(`A${r}`).value = dateStr;
+                    sheet.getCell(`C${r}`).value = "詳細はカタログ参照";
+                    sheet.getCell(`F${r}`).value = Number(item.qty);
+                }
+            });
+            const fileName = `エネルギー研究会_発注依頼表_${now.getFullYear()}_${now.getMonth()+1}_${now.getDate()}.xlsx`;
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer]), fileName);
+        } catch (e) { alert("出力エラー"); }
     }
 
-    // --- 補助関数 ---
     function arrayBufferToBase64(buffer) {
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
+        let binary = ''; const bytes = new Uint8Array(buffer);
         for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
         return window.btoa(binary);
     }
@@ -230,6 +193,5 @@
         return bytes.buffer;
     }
 </script>
-
 </body>
 </html>
